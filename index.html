@@ -1,0 +1,1315 @@
+<html><head><base href="https://zombiesurvival.apocalypse"><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Apocalipsis Zombie: Sobrevivencia 2D</title><style>
+body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    font-family: 'Press Start 2P', cursive;
+    background-color: #1a1a1a;
+    color: #33ff33;
+    overflow: hidden;
+    display: flex;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-wheel {
+    border: 16px solid #f3f3f3;
+    border-top: 16px solid #33ff33;
+    border-radius: 50%;
+    width: 120px;
+    height: 120px;
+    animation: spin 2s linear infinite;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1000;
+}
+
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+}
+
+#game-container {
+    display: flex;
+    flex-direction: row;
+    flex-grow: 1;
+    height: 100%;
+}
+
+#sidebar {
+    width: 250px;
+    background-color: rgba(0, 0, 0, 0.7);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+#right-sidebar {
+    width: 250px;
+    background-color: rgba(0, 0, 0, 0.7);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
+#game-area {
+    flex-grow: 1;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#hud {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+#health-bar, #energy-bar {
+    width: 100%;
+    height: 20px;
+    background-color: #444;
+    border: 1px solid #33ff33;
+    position: relative;
+}
+
+#health-bar div, #energy-bar div {
+    height: 100%;
+    background-color: #33ff33;
+    transition: width 0.3s ease-in-out;
+}
+
+.bar-value {
+    position: absolute;
+    right: 5px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #000;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+#inventory {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+
+.inventory-slot {
+    width: 100%;
+    height: 40px;
+    background-color: #333;
+    border: 1px solid #33ff33;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.inventory-item {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 20px;
+    cursor: move;
+}
+
+.inventory-slot.drag-over {
+    background-color: #444;
+}
+
+#equipment {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.equipment-slot {
+    width: 100%;
+    height: 60px;
+    background-color: #333;
+    border: 1px solid #33ff33;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+}
+
+.slot-label {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    font-size: 10px;
+    color: #33ff33;
+}
+
+.equipment-slot .inventory-item {
+    width: 80%;
+    height: 80%;
+}
+
+#grid {
+    display: grid;
+    gap: 1px;
+    background-color: #222;
+}
+
+.grid-cell {
+    position: relative;
+    width: 60px;
+    height: 60px;
+    background-color: #2a2a2a;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 30px;
+    color: rgba(255, 255, 255, 0.7);
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.grid-cell[data-terrain="pasto"] {
+    background-image: url('https://opengameart.org/sites/default/files/grass_14.png');
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+.grid-cell[data-terrain="agua"] {
+    background-image: none;
+    background-color: #4a8cff;
+}
+
+.grid-cell[data-terrain="edificio"] {
+    background-image: none;
+    position: relative;
+}
+
+.roof-1::before, .roof-2::before, .roof-3::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    opacity: 0.8;
+}
+
+.roof-1::before {
+    background: repeating-linear-gradient(
+        45deg,
+        #8B4513,
+        #8B4513 10px,
+        #A0522D 10px,
+        #A0522D 20px
+    );
+}
+
+.roof-2::before {
+    background: radial-gradient(
+        circle,
+        #CD853F 2px,
+        transparent 2px
+    ) 0 0 / 10px 10px;
+}
+
+.roof-3::before {
+    background: linear-gradient(
+        90deg,
+        #D2691E 25%,
+        #CD853F 25%,
+        #CD853F 50%,
+        #D2691E 50%,
+        #D2691E 75%,
+        #CD853F 75%
+    );
+    background-size: 20px 100%;
+}
+
+.cell-number {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.grid-cell:hover {
+    filter: brightness(1.2);
+}
+
+#actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+button {
+    padding: 10px;
+    background-color: #333;
+    color: #33ff33;
+    border: 1px solid #33ff33;
+    cursor: pointer;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 12px;
+    transition: background-color 0.3s;
+}
+
+button:hover {
+    background-color: #444;
+}
+
+#level-info {
+    text-align: center;
+    font-size: 14px;
+    margin-bottom: 20px;
+}
+
+#message-box {
+    background-color: rgba(0, 0, 0, 0.7);
+    padding: 10px;
+    border: 1px solid #33ff33;
+    text-align: center;
+    margin-top: 20px;
+    min-height: 60px;
+}
+
+.context-menu {
+    position: absolute;
+    background-color: #2a2a2a;
+    border: 1px solid #33ff33;
+    padding: 5px 0;
+    z-index: 1000;
+}
+
+.context-menu-item {
+    padding: 5px 20px;
+    cursor: pointer;
+}
+
+.context-menu-item:hover {
+    background-color: #3a3a3a;
+}
+
+.grid-cell[data-terrain="enemigo"] {
+    position: relative;
+}
+
+.enemy-stats {
+    display: none;
+    position: absolute;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: #33ff33;
+    padding: 5px;
+    border-radius: 5px;
+    font-size: 12px;
+    z-index: 1000;
+    width: 150px;
+    pointer-events: none;
+}
+
+.grid-cell[data-terrain="objeto"] {
+    position: relative;
+}
+
+.object-stats {
+    display: none;
+    position: absolute;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: #33ff33;
+    padding: 5px;
+    border-radius: 5px;
+    font-size: 12px;
+    z-index: 1000;
+    width: 150px;
+    pointer-events: none;
+}
+
+.grid-cell[data-terrain^="edificio"] {
+    position: relative;
+}
+
+.building-stats {
+    display: none;
+    position: absolute;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: #33ff33;
+    padding: 5px;
+    border-radius: 5px;
+    font-size: 12px;
+    z-index: 1000;
+    width: 150px;
+    pointer-events: none;
+}
+
+#damage-indicator {
+    position: absolute;
+    font-size: 24px;
+    color: #ff0000;
+    font-weight: bold;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.5s, transform 0.5s;
+}
+
+.enemy-damage-indicator {
+    position: absolute;
+    font-size: 24px;
+    color: #ff0000;
+    font-weight: bold;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.5s, transform 0.5s;
+}
+</style></head><body>
+<div id="game-container">
+    <div id="sidebar">
+        <div id="hud">
+            <div id="level-info">Nivel: 1 | Ronda: 1</div>
+            <div>Salud</div>
+            <div id="health-bar">
+                <div style="width: 100%;"></div>
+                <span class="bar-value">100</span>
+            </div>
+            <div>Energía</div>
+            <div id="energy-bar">
+                <div style="width: 100%;"></div>
+                <span class="bar-value">100</span>
+            </div>
+        </div>
+        <div id="actions">
+            <button onclick="buscarRecursos()">Buscar Recursos</button>
+            <button onclick="combatir()">Combatir</button>
+            <button onclick="descansar()">Descansar</button>
+            <button onclick="craftear()">Craftear</button>
+        </div>
+        <div id="message-box">Bienvenido al Apocalipsis Zombie. ¡Sobrevive y prospera!</div>
+    </div>
+    <div id="game-area">
+        <div id="grid"></div>
+    </div>
+    <div id="right-sidebar">
+        <div>Equipamiento</div>
+        <div id="equipment">
+            <div class="equipment-slot" data-slot="weapon"><div class="slot-label">Arma</div></div>
+            <div class="equipment-slot" data-slot="armor"><div class="slot-label">Armadura</div></div>
+            <div class="equipment-slot" data-slot="accessory"><div class="slot-label">Accesorio</div></div>
+            <div class="equipment-slot" data-slot="consumable"><div class="slot-label">Consumible</div></div>
+        </div>
+        <div>Inventario</div>
+        <div id="inventory">
+            <div class="inventory-slot" data-slot="0"><div class="inventory-item" draggable="true" data-item="cuchillo">🔪</div></div>
+            <div class="inventory-slot" data-slot="1"><div class="inventory-item" draggable="true" data-item="comida">🍖</div></div>
+            <div class="inventory-slot" data-slot="2"><div class="inventory-item" draggable="true" data-item="medicina">💊</div></div>
+            <div class="inventory-slot" data-slot="3"><div class="inventory-item" draggable="true" data-item="herramienta">🔧</div></div>
+        </div>
+    </div>
+</div>
+<script>
+let nivel = 1;
+let ronda = 1;
+let salud = 100;
+let energia = 100;
+let inventario = {
+    'cuchillo': 1,
+    'comida': 1,
+    'medicina': 1,
+    'herramienta': 1
+};
+
+let playerPosition = { x: 0, y: 0 };
+const gridSize = 10;
+const cellSize = 60;
+
+const terrainTypes = {
+    'pasto': { emoji: '🌿', passable: true },
+    'tierra': { emoji: '🟫', passable: true },
+    'agua': { emoji: '', passable: false },
+    'objeto': { emoji: '📦', passable: false },
+    'edificio': { emoji: '🏠', passable: false },
+    'enemigo': { emoji: '🧟‍♂️', passable: false },
+    'salida': { emoji: '🚪', passable: true }
+};
+
+let currentOpenHoverMenu = null;
+
+function isAdjacentToPlayer(x, y) {
+    const dx = Math.abs(playerPosition.x - x);
+    const dy = Math.abs(playerPosition.y - y);
+    return (dx === 1 && dy === 0) || (dx === 0 && dy === 1);
+}
+
+function irAPasto(data) {
+    const dx = data.x - playerPosition.x;
+    const dy = data.y - playerPosition.y;
+    movePlayer(dx, dy);
+}
+
+function checkEnemyProximity() {
+    const adjacentCells = [
+        { x: playerPosition.x - 1, y: playerPosition.y },
+        { x: playerPosition.x + 1, y: playerPosition.y },
+        { x: playerPosition.x, y: playerPosition.y - 1 },
+        { x: playerPosition.x, y: playerPosition.y + 1 },
+    ];
+
+    let enemyNearby = false;
+
+    adjacentCells.forEach(cell => {
+        if (cell.x >= 0 && cell.x < gridSize && cell.y >= 0 && cell.y < gridSize) {
+            const cellElement = document.querySelector(`.grid-cell:nth-child(${cell.y * gridSize + cell.x + 1})`);
+            if (cellElement.dataset.terrain === 'enemigo') {
+                enemyNearby = true;
+                highlightEnemyAdjacentCells(cell.x, cell.y);
+            }
+        }
+    });
+
+    return enemyNearby;
+}
+
+function highlightEnemyAdjacentCells(enemyX, enemyY) {
+    const adjacentCells = [
+        { x: enemyX - 1, y: enemyY },
+        { x: enemyX + 1, y: enemyY },
+        { x: enemyX, y: enemyY - 1 },
+        { x: enemyX, y: enemyY + 1 },
+    ];
+
+    adjacentCells.forEach(cell => {
+        if (cell.x >= 0 && cell.x < gridSize && cell.y >= 0 && cell.y < gridSize) {
+            const cellElement = document.querySelector(`.grid-cell:nth-child(${cell.y * gridSize + cell.x + 1})`);
+            cellElement.style.backgroundColor = 'rgba(255, 0, 0, 0.3)';
+        }
+    });
+}
+
+function getObjectContextMenuOptions(data) {
+    if (isAdjacentToPlayer(data.x, data.y)) {
+        return [
+            { text: 'Recoger', action: () => recogerObjeto(data) },
+            { text: 'Examinar', action: () => examinarObjeto(data) },
+            { text: 'Ignorar', action: () => ignorarObjeto(data) }
+        ];
+    } else {
+        return [{ text: 'Acércate para interactuar', action: () => mostrarMensaje('Debes acercarte al objeto para interactuar con él.') }];
+    }
+}
+
+function recogerObjeto(data) {
+    if (!isAdjacentToPlayer(data.x, data.y)) {
+        mostrarMensaje('Debes estar adyacente al objeto para recogerlo.');
+        return;
+    }
+    if (energia >= 10) {
+        energia -= 10;
+        let objetoRecogido = Math.random() < 0.7;
+        if (objetoRecogido) {
+            let objetos = ['comida', 'medicina', 'herramienta'];
+            let objeto = objetos[Math.floor(Math.random() * objetos.length)];
+            inventario[objeto]++;
+            mostrarMensaje(`¡Has recogido ${objeto}!`);
+            const cell = document.querySelector(`.grid-cell:nth-child(${data.y * gridSize + data.x + 1})`);
+            cell.dataset.terrain = 'pasto';
+            cell.innerHTML = `<span class="cell-number">${data.y * gridSize + data.x + 1}</span>`;
+        } else {
+            mostrarMensaje('No has encontrado nada útil en este objeto.');
+        }
+        actualizarHUD();
+    } else {
+        mostrarMensaje('No tienes suficiente energía para recoger el objeto.');
+    }
+}
+
+function examinarObjeto(data) {
+    if (!isAdjacentToPlayer(data.x, data.y)) {
+        mostrarMensaje('Debes estar adyacente al objeto para examinarlo.');
+        return;
+    }
+    mostrarMensaje('Parece ser un objeto que podría contener recursos útiles. Puedes intentar recogerlo o dejarlo.');
+}
+
+function ignorarObjeto(data) {
+    if (!isAdjacentToPlayer(data.x, data.y)) {
+        mostrarMensaje('Debes estar adyacente al objeto para decidir ignorarlo.');
+        return;
+    }
+    mostrarMensaje('Has decidido ignorar el objeto y seguir adelante.');
+}
+
+function getGridCellContextMenuOptions(data, terrainType) {
+    if (terrainType === 'enemigo') {
+        if (isAdjacentToPlayer(data.x, data.y)) {
+            return [
+                { text: 'Atacar', action: () => atacarEnemigo(data) },
+                { text: 'Evitar', action: () => evitarEnemigo(data) },
+                { text: 'Observar', action: () => observarEnemigo(data) }
+            ];
+        } else {
+            return [{ text: 'Acércate para interactuar', action: () => mostrarMensaje('Debes acercarte al enemigo para interactuar con él.') }];
+        }
+    } else if (terrainType === 'agua') {
+        if (isAdjacentToPlayer(data.x, data.y)) {
+            return [
+                { text: 'Beber', action: () => beberAgua(data) },
+                { text: 'Nadar', action: () => nadar(data) },
+                { text: 'Pescar', action: () => pescar(data) }
+            ];
+        } else {
+            return [{ text: 'Acércate para interactuar', action: () => mostrarMensaje('Debes acercarte al agua para interactuar con ella.') }];
+        }
+    } else if (terrainType === 'objeto') {
+        return getObjectContextMenuOptions(data);
+    } else if (terrainType === 'pasto') {
+        return [
+            { text: 'Ir', action: () => irAPasto(data) },
+            { text: 'Descansar', action: () => descansarEnPasto(data) },
+            { text: 'Buscar recursos', action: () => buscarRecursosEnPasto(data) },
+            { text: 'Observar alrededores', action: () => observarAlrededores(data) }
+        ];
+    } else {
+        return [];
+    }
+}
+
+function beberAgua(data) {
+    if (!isAdjacentToPlayer(data.x, data.y)) {
+        mostrarMensaje('Debes estar adyacente al agua para beber.');
+        return;
+    }
+    energia = Math.min(100, energia + 10);
+    mostrarMensaje('Has bebido agua y recuperado un poco de energía.');
+    actualizarHUD();
+}
+
+function nadar(data) {
+    if (!isAdjacentToPlayer(data.x, data.y)) {
+        mostrarMensaje('Debes estar adyacente al agua para nadar.');
+        return;
+    }
+    if (energia >= 20) {
+        energia -= 20;
+        mostrarMensaje('Has nadado en el agua. Te sientes refrescado pero has gastado energía.');
+        actualizarHUD();
+    } else {
+        mostrarMensaje('No tienes suficiente energía para nadar.');
+    }
+}
+
+function pescar(data) {
+    if (!isAdjacentToPlayer(data.x, data.y)) {
+        mostrarMensaje('Debes estar adyacente al agua para pescar.');
+        return;
+    }
+    if (energia >= 30) {
+        energia -= 30;
+        let exito = Math.random() < 0.5;
+        if (exito) {
+            inventario['comida']++;
+            mostrarMensaje('¡Has pescado con éxito! Obtienes 1 de comida.');
+        } else {
+            mostrarMensaje('No has logrado pescar nada esta vez.');
+        }
+        actualizarHUD();
+    } else {
+        mostrarMensaje('No tienes suficiente energía para pescar.');
+    }
+}
+
+function atacarEnemigo(data) {
+    if (!isAdjacentToPlayer(data.x, data.y)) {
+        mostrarMensaje('Debes estar adyacente al enemigo para atacar.');
+        return;
+    }
+    if (energia >= 30) {
+        energia -= 30;
+        let victoria = Math.random() < 0.6;
+        if (victoria) {
+            const damage = Math.floor(Math.random() * 30) + 20; // Random damage between 20 and 50
+            mostrarMensaje(`¡Has derrotado al enemigo! Le hiciste ${damage} de daño.`);
+            showEnemyDamageIndicator(data.x, data.y, damage);
+            const cell = document.querySelector(`.grid-cell:nth-child(${data.y * gridSize + data.x + 1})`);
+            cell.dataset.terrain = 'pasto';
+            cell.innerHTML = `<span class="cell-number">${data.y * gridSize + data.x + 1}</span>`;
+            nivel++; // Increase level after defeating an enemy
+        } else {
+            const damage = 20;
+            salud -= damage;
+            mostrarMensaje(`El enemigo te ha herido. Pierdes ${damage} de salud.`);
+            showDamageIndicator(damage);
+        }
+        actualizarHUD();
+    } else {
+        mostrarMensaje('No tienes suficiente energía para atacar.');
+    }
+}
+
+function evitarEnemigo(data) {
+    if (!isAdjacentToPlayer(data.x, data.y)) {
+        mostrarMensaje('Debes estar adyacente al enemigo para evitarlo.');
+        return;
+    }
+    mostrarMensaje('Has decidido evitar al enemigo y buscar un camino alternativo.');
+}
+
+function observarEnemigo(data) {
+    if (!isAdjacentToPlayer(data.x, data.y)) {
+        mostrarMensaje('Debes estar adyacente al enemigo para observarlo de cerca.');
+        return;
+    }
+    mostrarMensaje('Observas al enemigo desde la distancia. Parece peligroso, pero quizás haya una forma de superarlo.');
+}
+
+function descansarEnPasto(data) {
+    if (energia < 100) {
+        energia = Math.min(100, energia + 10);
+        mostrarMensaje('Has descansado en el pasto. Recuperas 10 de energía.');
+        actualizarHUD();
+    } else {
+        mostrarMensaje('Ya estás completamente descansado.');
+    }
+}
+
+function buscarRecursosEnPasto(data) {
+    if (energia >= 10) {
+        energia -= 10;
+        let exito = Math.random() < 0.3;
+        if (exito) {
+            let recursos = ['comida', 'medicina', 'herramienta'];
+            let recurso = recursos[Math.floor(Math.random() * recursos.length)];
+            inventario[recurso]++;
+            mostrarMensaje(`¡Has encontrado ${recurso} en el pasto!`);
+        } else {
+            mostrarMensaje('No has encontrado nada útil en este pasto.');
+        }
+        actualizarHUD();
+    } else {
+        mostrarMensaje('No tienes suficiente energía para buscar recursos.');
+    }
+}
+
+function observarAlrededores(data) {
+    mostrarMensaje('Observas los alrededores. El área parece tranquila por ahora.');
+}
+
+function showDamageIndicator(damage) {
+    const indicator = document.createElement('div');
+    indicator.id = 'damage-indicator';
+    indicator.textContent = `-${damage}`;
+    
+    indicator.style.left = `${playerPosition.x * cellSize + 20}px`;
+    indicator.style.top = `${playerPosition.y * cellSize - 20}px`;
+    
+    document.getElementById('game-area').appendChild(indicator);
+    
+    setTimeout(() => {
+        indicator.style.opacity = '1';
+        indicator.style.transform = 'translateY(-20px)';
+    }, 50);
+    
+    setTimeout(() => {
+        indicator.remove();
+    }, 1000);
+}
+
+function showEnemyDamageIndicator(x, y, damage) {
+    const indicator = document.createElement('div');
+    indicator.className = 'enemy-damage-indicator';
+    indicator.textContent = `-${damage}`;
+    
+    indicator.style.left = `${x * cellSize + 20}px`;
+    indicator.style.top = `${y * cellSize - 20}px`;
+    
+    document.getElementById('game-area').appendChild(indicator);
+    
+    setTimeout(() => {
+        indicator.style.opacity = '1';
+        indicator.style.transform = 'translateY(-20px)';
+    }, 50);
+    
+    setTimeout(() => {
+        indicator.remove();
+    }, 1000);
+}
+
+function generateCoherentLandscape() {
+    const landscape = Array(gridSize).fill().map(() => Array(gridSize).fill('pasto'));
+    
+    const waterStartX = Math.floor(Math.random() * gridSize / 2);
+    const waterStartY = Math.floor(Math.random() * gridSize / 2);
+    const waterWidth = Math.floor(Math.random() * (gridSize / 2) + gridSize / 4);
+    const waterHeight = Math.floor(Math.random() * (gridSize / 2) + gridSize / 4);
+    
+    for (let y = waterStartY; y < Math.min(waterStartY + waterHeight, gridSize); y++) {
+        for (let x = waterStartX; x < Math.min(waterStartX + waterWidth, gridSize); x++) {
+            landscape[y][x] = 'agua';
+        }
+    }
+    
+    const forestStartX = Math.floor(Math.random() * gridSize / 2) + gridSize / 2;
+    const forestStartY = Math.floor(Math.random() * gridSize / 2);
+    const forestSize = Math.floor(Math.random() * (gridSize / 3) + gridSize / 3);
+    
+    for (let y = forestStartY; y < Math.min(forestStartY + forestSize, gridSize); y++) {
+        for (let x = forestStartX; x < Math.min(forestStartX + forestSize, gridSize); x++) {
+            if (Math.random() < 0.7) landscape[y][x] = 'objeto';
+        }
+    }
+    
+    placeBuildings(landscape);
+    
+    for (let y = 0; y < gridSize; y++) {
+        for (let x = 0; x < gridSize; x++) {
+            if (Math.random() < 0.05) landscape[y][x] = 'enemigo';
+        }
+    }
+    
+    const exitIndex = Math.floor(Math.random() * 10) + 90;
+    const exitY = Math.floor(exitIndex / gridSize);
+    const exitX = exitIndex % gridSize;
+    landscape[exitY][exitX] = 'salida';
+    
+    return landscape;
+}
+
+function placeBuildings(landscape) {
+    const buildingCount = Math.floor(Math.random() * 2) + 1;
+
+    for (let i = 0; i < buildingCount; i++) {
+        let placed = false;
+        while (!placed) {
+            const startX = Math.floor(Math.random() * (gridSize - 1));
+            const startY = Math.floor(Math.random() * (gridSize - 1));
+            
+            if (canPlaceBuilding(landscape, startX, startY)) {
+                const roofType = `roof-${Math.floor(Math.random() * 3) + 1}`;
+                const buildingType = ['Casa', 'Tienda', 'Almacén'][Math.floor(Math.random() * 3)];
+                const condition = ['Buena', 'Regular', 'Mala'][Math.floor(Math.random() * 3)];
+                const lootProbability = Math.floor(Math.random() * 100);
+                
+                for (let y = startY; y < startY + 2; y++) {
+                    for (let x = startX; x < startX + 2; x++) {
+                        landscape[y][x] = `edificio,${roofType},${buildingType},${condition},${lootProbability}`;
+                    }
+                }
+                placed = true;
+            }
+        }
+    }
+}
+
+function canPlaceBuilding(landscape, startX, startY) {
+    if (startX + 1 >= gridSize || startY + 1 >= gridSize) return false;
+    
+    for (let y = startY; y < startY + 2; y++) {
+        for (let x = startX; x < startX + 2; x++) {
+            if (landscape[y][x] !== 'pasto') return false;
+        }
+    }
+    return true;
+}
+
+function initializeGrid() {
+    const grid = document.getElementById('grid');
+    grid.style.gridTemplateColumns = `repeat(${gridSize}, ${cellSize}px)`;
+    grid.style.gridTemplateRows = `repeat(${gridSize}, ${cellSize}px)`;
+    
+    const landscape = generateCoherentLandscape();
+    let cellNumber = 1;
+    
+    for (let y = 0; y < gridSize; y++) {
+        for (let x = 0; x < gridSize; x++) {
+            const cell = document.createElement('div');
+            cell.className = 'grid-cell';
+            cell.dataset.x = x;
+            cell.dataset.y = y;
+            const terrainInfo = landscape[y][x].split(',');
+            const terrainType = terrainInfo[0];
+            cell.dataset.terrain = terrainType;
+            if (terrainInfo.length > 1) {
+                cell.classList.add(terrainInfo[1]);
+            }
+            if (terrainType === 'enemigo') {
+                cell.innerHTML = `🧟‍♂️<span class="cell-number">${cellNumber++}</span>`;
+            } else {
+                cell.innerHTML = terrainType === 'agua' || terrainType === 'pasto' ? 
+                    `<span class="cell-number">${cellNumber++}</span>` :
+                    `${terrainTypes[terrainType].emoji}<span class="cell-number">${cellNumber++}</span>`;
+            }
+            
+            if (terrainType === 'salida') {
+                cell.style.backgroundColor = '#4CAF50';
+                cell.style.border = '2px solid #45a049';
+            }
+            
+            if (terrainType === 'enemigo') {
+                const enemyType = Math.random() < 0.5 ? 'zombie' : 'mutante';
+                const enemyHealth = Math.floor(Math.random() * 50) + 50;
+                const enemyDamage = Math.floor(Math.random() * 10) + 5;
+                
+                cell.dataset.enemyType = enemyType;
+                cell.dataset.enemyHealth = enemyHealth;
+                cell.dataset.enemyDamage = enemyDamage;
+
+                const statsDiv = document.createElement('div');
+                statsDiv.className = 'enemy-stats';
+                statsDiv.innerHTML = `
+                    Tipo: ${enemyType}<br>
+                    Salud: ${enemyHealth}<br>
+                    Daño: ${enemyDamage}
+                `;
+                cell.appendChild(statsDiv);
+            }
+
+            if (terrainType === 'objeto') {
+                const objectProperties = generateObjectProperties();
+                cell.dataset.objectType = objectProperties.type;
+                cell.dataset.objectDurability = objectProperties.durability;
+                cell.dataset.objectValue = objectProperties.value;
+
+                const statsDiv = document.createElement('div');
+                statsDiv.className = 'object-stats';
+                statsDiv.innerHTML = `
+                    Tipo: ${objectProperties.type}<br>
+                    Durabilidad: ${objectProperties.durability}<br>
+                    Valor: ${objectProperties.value}
+                `;
+                cell.appendChild(statsDiv);
+            }
+
+            if (terrainType === 'edificio') {
+                const [, roofType, buildingType, condition, lootProbability] = terrainInfo;
+                cell.classList.add(roofType);
+                cell.dataset.buildingType = buildingType;
+                cell.dataset.condition = condition;
+                cell.dataset.lootProbability = lootProbability;
+
+                const statsDiv = document.createElement('div');
+                statsDiv.className = 'building-stats';
+                statsDiv.innerHTML = `
+                    Tipo: ${buildingType}<br>
+                    Condición: ${condition}<br>
+                    Prob. de botín: ${lootProbability}%
+                `;
+                cell.appendChild(statsDiv);
+            }
+
+            cell.addEventListener('mouseenter', () => {
+                cell.style.filter = 'brightness(1.2)';
+                showHoverMenu(cell);
+            });
+            cell.addEventListener('mouseleave', () => {
+                cell.style.filter = 'brightness(1)';
+                hideHoverMenu(cell);
+            });
+
+            cell.addEventListener('contextmenu', (e) => showContextMenu(e, 'grid', { x, y }));
+            grid.appendChild(cell);
+        }
+    }
+}
+
+function showHoverMenu(cell) {
+    if (currentOpenHoverMenu) {
+        hideHoverMenu(currentOpenHoverMenu);
+    }
+    const hoverMenu = cell.querySelector('.enemy-stats, .object-stats, .building-stats');
+    if (hoverMenu) {
+        hoverMenu.style.display = 'block';
+        currentOpenHoverMenu = cell;
+    }
+}
+
+function hideHoverMenu(cell) {
+    const hoverMenu = cell.querySelector('.enemy-stats, .object-stats, .building-stats');
+    if (hoverMenu) {
+        hoverMenu.style.display = 'none';
+    }
+    if (currentOpenHoverMenu === cell) {
+        currentOpenHoverMenu = null;
+    }
+}
+
+function generateObjectProperties() {
+    const objectTypes = ['Caja', 'Barril', 'Mochila', 'Escombros'];
+    const type = objectTypes[Math.floor(Math.random() * objectTypes.length)];
+    const durability = Math.floor(Math.random() * 100) + 1;
+    const value = Math.floor(Math.random() * 50) + 1;
+
+    return { type, durability, value };
+}
+
+function updatePlayerPosition() {
+    const previousPlayerCell = document.querySelector('.grid-cell.player-position');
+    if (previousPlayerCell) {
+        const cellNumber = previousPlayerCell.querySelector('.cell-number');
+        if (cellNumber) {
+            cellNumber.style.display = 'block';
+        }
+        previousPlayerCell.textContent = previousPlayerCell.textContent.replace('🧍‍♂️', '');
+        previousPlayerCell.classList.remove('player-position');
+    }
+
+    const currentPlayerCell = document.querySelector(`.grid-cell:nth-child(${playerPosition.y * gridSize + playerPosition.x + 1})`);
+    const cellNumber = currentPlayerCell.querySelector('.cell-number');
+    if (cellNumber) {
+        cellNumber.style.display = 'none';
+    }
+    currentPlayerCell.insertAdjacentHTML('afterbegin', '🧍‍♂️');
+    currentPlayerCell.classList.add('player-position');
+}
+
+function movePlayer(dx, dy) {
+    const targetX = playerPosition.x + dx;
+    const targetY = playerPosition.y + dy;
+
+    if (targetX < 0 || targetX >= gridSize || targetY < 0 || targetY >= gridSize) {
+        return;
+    }
+
+    const targetCell = document.querySelector(`.grid-cell:nth-child(${targetY * gridSize + targetX + 1})`);
+    const terrainType = targetCell.dataset.terrain;
+    
+    if (!terrainTypes[terrainType].passable) {
+        mostrarMensaje(`No puedes moverte a ${terrainTypes[terrainType].emoji}. Terreno impasable.`);
+        return;
+    }
+
+    if (energia < 5) {
+        mostrarMensaje('No tienes suficiente energía para moverte.');
+        return;
+    }
+
+    energia -= 5;
+
+    playerPosition.x = targetX;
+    playerPosition.y = targetY;
+    updatePlayerPosition();
+    actualizarHUD();
+    mostrarMensaje(`Te has movido a la casilla (${targetX + 1}, ${targetY + 1}). Energía restante: ${energia}`);
+
+    document.querySelectorAll('.grid-cell').forEach(cell => {
+        cell.style.backgroundColor = '';
+    });
+
+    if (checkEnemyProximity()) {
+        combatir(true);
+    }
+}
+
+function actualizarHUD() {
+    const healthBar = document.querySelector('#health-bar div');
+    const energyBar = document.querySelector('#energy-bar div');
+    const healthValue = document.querySelector('#health-bar .bar-value');
+    const energyValue = document.querySelector('#energy-bar .bar-value');
+
+    healthBar.style.width = salud + '%';
+    energyBar.style.width = energia + '%';
+    healthValue.textContent = Math.round(salud);
+    energyValue.textContent = Math.round(energia);
+
+    document.getElementById('level-info').textContent = `Nivel: ${nivel} | Ronda: ${ronda}`;
+}
+
+function mostrarMensaje(mensaje) {
+    document.getElementById('message-box').textContent = mensaje;
+}
+
+function buscarRecursos() {
+    if (energia >= 20) {
+        energia -= 20;
+        
+        const overlay = document.createElement('div');
+        overlay.className = 'overlay';
+        const loadingWheel = document.createElement('div');
+        loadingWheel.className = 'loading-wheel';
+        document.body.appendChild(overlay);
+        document.body.appendChild(loadingWheel);
+        
+        const buttons = document.querySelectorAll('button');
+        buttons.forEach(button => button.disabled = true);
+        
+        // Add the 🙇 emoji to the player's current position
+        const currentPlayerCell = document.querySelector(`.grid-cell:nth-child(${playerPosition.y * gridSize + playerPosition.x + 1})`);
+        const originalContent = currentPlayerCell.innerHTML;
+        currentPlayerCell.innerHTML = '🙇';
+        
+        setTimeout(() => {
+            document.body.removeChild(overlay);
+            document.body.removeChild(loadingWheel);
+            
+            buttons.forEach(button => button.disabled = false);
+            
+            // Restore the original content of the player's cell
+            currentPlayerCell.innerHTML = originalContent;
+            
+            let recursoEncontrado = Math.random() < 0.7;
+            if (recursoEncontrado) {
+                let recursos = ['comida', 'medicina', 'herramienta'];
+                let recurso = recursos[Math.floor(Math.random() * recursos.length)];
+                inventario[recurso]++;
+                mostrarMensaje(`¡Has encontrado ${recurso}!`);
+            } else {
+                mostrarMensaje('No has encontrado nada útil esta vez.');
+            }
+            siguienteRonda();
+        }, 4000);
+    } else {
+        mostrarMensaje('No tienes suficiente energía para buscar recursos.');
+    }
+}
+
+function combatir(autoInitiated = false) {
+    if (energia >= 30 || autoInitiated) {
+        if (!autoInitiated) {
+            energia -= 30;
+        }
+        mostrarMensaje('¡Estás en combate! Elige tu próxima acción.');
+        document.querySelectorAll('.grid-cell').forEach(cell => {
+            cell.style.backgroundColor = '';
+        });
+        checkEnemyProximity();
+    } else {
+        mostrarMensaje('No tienes suficiente energía para combatir.');
+    }
+}
+
+function descansar() {
+    energia = Math.min(100, energia + 30);
+    salud = Math.min(100, salud + 10);
+    mostrarMensaje('Has descansado. Recuperas energía y un poco de salud.');
+    siguienteRonda();
+}
+
+function craftear() {
+    if (inventario['herramienta'] > 0) {
+        inventario['herramienta']--;
+        let itemCrafteado = Math.random() < 0.5 ? 'cuchillo' : 'medicina';
+        inventario[itemCrafteado]++;
+        mostrarMensaje(`Has crafteado un ${itemCrafteado}.`);
+        siguienteRonda();
+    } else {
+        mostrarMensaje('No tienes suficientes herramientas para craftear.');
+    }
+}
+
+function siguienteRonda() {
+    ronda++;
+    if (ronda > 5) {
+        ronda = 1;
+        nivel++;
+    }
+    actualizarHUD();
+    if (salud <= 0) {
+        mostrarMensaje('Has muerto. Fin del juego.');
+    }
+}
+
+function showContextMenu(e, type, data) {
+    e.preventDefault();
+    const contextMenu = document.createElement('div');
+    contextMenu.className = 'context-menu';
+    contextMenu.style.left = `${e.clientX}px`;
+    contextMenu.style.top = `${e.clientY}px`;
+
+    let options;
+    if (type === 'grid') {
+        const cell = document.querySelector(`.grid-cell:nth-child(${data.y * gridSize + data.x + 1})`);
+        const terrainType = cell.dataset.terrain;
+        options = getGridCellContextMenuOptions(data, terrainType);
+    } else {
+        options = getContextMenuOptions(data);
+    }
+
+    options.forEach(option => {
+        const menuItem = document.createElement('div');
+        menuItem.className = 'context-menu-item';
+        menuItem.textContent = option.text;
+        menuItem.onclick = () => {
+            option.action();
+            document.body.removeChild(contextMenu);
+        };
+        contextMenu.appendChild(menuItem);
+    });
+
+    document.body.appendChild(contextMenu);
+
+    document.addEventListener('click', function removeContextMenu() {
+        if (document.body.contains(contextMenu)) {
+            document.body.removeChild(contextMenu);
+        }
+        document.removeEventListener('click', removeContextMenu);
+    });
+}
+
+function getContextMenuOptions(data) {
+    return [];
+}
+
+function initializeDragAndDrop() {
+    const inventoryItems = document.querySelectorAll('.inventory-item');
+    const inventorySlots = document.querySelectorAll('.inventory-slot, .equipment-slot');
+
+    inventoryItems.forEach(item => {
+        item.addEventListener('dragstart', dragStart);
+        item.addEventListener('dragend', dragEnd);
+    });
+
+    inventorySlots.forEach(slot => {
+        slot.addEventListener('dragover', dragOver);
+        slot.addEventListener('dragenter', dragEnter);
+        slot.addEventListener('dragleave', dragLeave);
+        slot.addEventListener('drop', drop);
+    });
+}
+
+function dragStart(e) {
+    e.dataTransfer.setData('text/plain', e.target.dataset.item);
+    setTimeout(() => {
+        e.target.style.opacity = '0.5';
+    }, 0);
+}
+
+function dragEnd(e) {
+    e.target.style.opacity = '1';
+}
+
+function dragOver(e) {
+    e.preventDefault();
+}
+
+function dragEnter(e) {
+    e.preventDefault();
+    e.target.classList.add('drag-over');
+}
+
+function dragLeave(e) {
+    e.target.classList.remove('drag-over');
+}
+
+function drop(e) {
+    e.preventDefault();
+    const slot = e.target.closest('.inventory-slot, .equipment-slot');
+    slot.classList.remove('drag-over');
+    
+    const itemType = e.dataTransfer.getData('text');
+    const sourceSlot = document.querySelector(`.inventory-item[data-item="${itemType}"]`).parentElement;
+    const targetSlot = slot;
+
+    if (sourceSlot !== targetSlot) {
+        const sourceItem = sourceSlot.querySelector('.inventory-item');
+        const targetItem = targetSlot.querySelector('.inventory-item');
+
+        // Check if the item can be equipped in the target slot
+        if (targetSlot.classList.contains('equipment-slot') && !canEquipItem(itemType, targetSlot.dataset.slot)) {
+            mostrarMensaje('Este item no puede ser equipado en este slot.');
+            return;
+        }
+
+        if (targetItem) {
+            sourceSlot.appendChild(targetItem);
+        } else {
+            sourceSlot.innerHTML = sourceSlot.classList.contains('equipment-slot') ? '<div class="slot-label">' + getSlotLabel(sourceSlot.dataset.slot) + '</div>' : '';
+        }
+
+        targetSlot.innerHTML = targetSlot.classList.contains('equipment-slot') ? '<div class="slot-label">' + getSlotLabel(targetSlot.dataset.slot) + '</div>' : '';
+        targetSlot.appendChild(sourceItem);
+
+        updateInventoryData();
+    }
+}
+
+// Add these new functions to handle equipment logic
+function canEquipItem(itemType, slotType) {
+    const equipmentRules = {
+        'weapon': ['cuchillo'],
+        'armor': [],
+        'accessory': [],
+        'consumable': ['comida', 'medicina']
+    };
+
+    return equipmentRules[slotType].includes(itemType);
+}
+
+function getSlotLabel(slotType) {
+    const labels = {
+        'weapon': 'Arma',
+        'armor': 'Armadura',
+        'accessory': 'Accesorio',
+        'consumable': 'Consumible'
+    };
+
+    return labels[slotType];
+}
+
+// Modify the updateInventoryData function to account for equipped items
+function updateInventoryData() {
+    const inventorySlots = document.querySelectorAll('.inventory-slot');
+    const equipmentSlots = document.querySelectorAll('.equipment-slot');
+    inventario = {
+        'cuchillo': 0,
+        'comida': 0,
+        'medicina': 0,
+        'herramienta': 0
+    };
+
+    inventorySlots.forEach(slot => {
+        const item = slot.querySelector('.inventory-item');
+        if (item) {
+            inventario[item.dataset.item]++;
+        }
+    });
+
+    equipmentSlots.forEach(slot => {
+        const item = slot.querySelector('.inventory-item');
+        if (item) {
+            // Equipped items are not counted in the inventory
+            // You might want to add logic here to apply effects of equipped items
+        }
+    });
+
+    actualizarHUD();
+}
+
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'ArrowUp') {
+        movePlayer(0, -1);
+    } else if (event.key === 'ArrowDown') {
+        movePlayer(0, 1);
+    } else if (event.key === 'ArrowLeft') {
+        movePlayer(-1, 0);
+    } else if (event.key === 'ArrowRight') {
+        movePlayer(1, 0);
+    }
+});
+
+window.onload = function() {
+    initializeGrid();
+    updatePlayerPosition(); // This will now add the player icon to the initial position
+    actualizarHUD();
+    initializeDragAndDrop();
+
+    const inventoryItems = document.querySelectorAll('.inventory-item');
+    inventoryItems.forEach(item => {
+        item.addEventListener('contextmenu', (e) => showContextMenu(e, 'item', item.dataset.item));
+    });
+};
+</script>
+</body></html>
